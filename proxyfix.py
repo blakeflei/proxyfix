@@ -22,13 +22,16 @@
 
 import os
 import sys
+import io
 import platform
 from datetime import datetime
 from shutil import copy2
 import requests
+import ssl
 import argparse
 import glob
 import re
+
 
 # Module variables
 script_loc = os.path.dirname(os.path.abspath(__file__))
@@ -116,9 +119,9 @@ def _backup_file(pth_old):
 
 def _append_text(pth_prev_textfile, path_new_textfile, backup=True):
     """ Check if text present in file, if not append. """
-    with open(pth_prev_textfile, encoding='utf-8') as f:
+    with io.open(pth_prev_textfile, encoding='utf-8') as f:
         existing_contents = f.readlines()
-    with open(path_new_textfile, encoding='utf-8') as f:
+    with io.open(path_new_textfile, encoding='utf-8') as f:
         new_contents = f.readlines()
         new_contents.insert(0, "\n")
     if not set(new_contents).issubset(existing_contents):  # If new text is not in existing, append
@@ -171,22 +174,23 @@ def cert_config(pth_config, config_str, pth_prepend="cert="):
     path_cert = re.sub('[\n\r]', '', _path_update(path_cert))
 
     if not os.path.exists(pth_config):  # if config file does not exist, create and populate
-        os.makedirs(os.path.dirname(pth_config), exist_ok=True)
-        with open(pth_config, 'w', encoding='utf-8') as file:
+        if not os.path.exists(os.path.dirname(pth_config)):
+            os.makedirs(os.path.dirname(pth_config))
+        with io.open(pth_config, 'w', encoding='utf-8') as file:
             for line in config_str:
                 # Use re to print filename consistently.
-                file.write(re.sub('{}.*$'.format(pth_prepend), ''.join([pth_prepend, path_cert]), line))
+                file.write(re.sub(u'{}.*$'.format(pth_prepend), ''.join([pth_prepend, path_cert]), line))
         status = "".join(["Created and updated ", pth_config])
     else:  # If config file exists, replace or append if pth_prepend not present
-        with open(pth_config, encoding='utf-8') as f:
+        with io.open(pth_config, encoding='utf-8') as f:
             pip_contents = f.readlines()  # Read contents
             pip_contents = [_path_update(x) for x in pip_contents]  # Update windows paths for string literals
         if pth_prepend not in '\t'.join(pip_contents):  # Append pip.ini cert
-            with open(pth_config, 'a', encoding='utf-8') as file:
+            with io.open(pth_config, 'a', encoding='utf-8') as file:
                 # Use re to print filename consistently.
-                file.write(re.sub('{}.*$'.format(pth_prepend),
-                                  ''.join([pth_prepend, path_cert]),
-                                  '{}{}\r\n'.format(pth_prepend, path_cert)))
+                file.write(re.sub(u'{}.*$'.format(pth_prepend),
+                                  u''.join([pth_prepend, path_cert]),
+                                  u'{}{}\r\n'.format(pth_prepend, path_cert)))
             status = "".join(["Appended to ", pth_config])
         else:  # Update path_cert:
             if path_cert not in '\t'.join(pip_contents):
@@ -209,20 +213,7 @@ def ssl_pip(pth_cert=requests.certs.where(), pth_prepend="cert="):
     """ Update pip SSL install configuration. """
     operating_sys = platform.system()
 
-#    # Copy Pip Cert - skipped b/c we can point to requests cert
-#    if not os.path.exists(loc_cert_pip):  # Copy cert
-#        print(''.join(['Pip config: Copying cert to ', loc_cert_pip]))
-#        os.makedirs(os.path.dirname(loc_cert_pip), exist_ok=True)
-#        copy2(loc_cert_req, loc_cert_pip)
-#    else:  # Check if append to cert
-#        update_cert(loc_cert_req, loc_cert):
-#    loc_cert_pip = _path_update(os.path.normpath(os.path.join(os.path.dirname(loc_pip_ini),
-#            os.path.basename(loc_cert_req))))  # Determine final loc_cert_pip:
-
-    pip_text = ['\r\n[global]\r\n',
-                ''.join([pth_prepend, pth_cert, '\r\n'])]  # Text to write if not present:
-
-    # locate pip.ini config file:
+    # Locate pip.ini config file:
     if 'envs' in sys.prefix:  # Completely unscientific way of checking if in python virtual env
         loc_pip_ini = os.path.join(sys.prefix, 'pip.conf')
     else:
@@ -240,6 +231,19 @@ def ssl_pip(pth_cert=requests.certs.where(), pth_prepend="cert="):
         elif operating_sys == 'Linux':  # Linux
             loc_pip_ini = os.path.join(os.environ['HOME'], '.config', 'pip',
                                        'pip.conf')
+#    # Copy Pip Cert - skipped b/c we can point to requests cert
+#    if pth_cert=='default':
+#        pth_cert = os.path.join(os.path.basename(loc_pip_ini), os.path.basename(loc_cert_req))
+#        if not os.path.exists(pth_cert):  # Copy cert
+#            print(''.join(['Pip config: Copying cert to ', pth_cert]))
+#            os.makedirs(os.path.dirname(pth_cert), exist_ok=True)
+#            copy2(loc_cert_req, pth_cert)
+#        else:  # Check if append to cert
+#            update_cert(pth_cert, loc_cert_req)
+#        pth_cert = _path_update(pth_cert)  # Determine final loc_cert_pip:
+
+    pip_text = ['\r\n[global]\r\n',
+                ''.join([pth_prepend, pth_cert, '\r\n'])]  # Text to write if not present:
 
     # Update/create config file, return output
     return cert_config(loc_pip_ini, pip_text, pth_prepend="cert=")
@@ -288,49 +292,72 @@ def run_argparse():  # User inputs
                         metavar="KEY1=VAL1,KEY2=VAL2...")
     parser.add_argument("-p", "--pip", help="Configure ssl for pip.",
                         action="store_true")
+    parser.add_argument("-r", "--requests", help="Configure requests ssl for conda.",
+                        action="store_true")
+    parser.add_argument("-a", "--aws", help="Configure for boto3 in windows being a separate installation",
+                        action="store_true")
     args = parser.parse_args()
 
     main(cert_path=args.cert_path, set_env=set_env, prepend_env=prepend_env,
-         pip=args.pip)
-
+         pip=args.pip, requests=args.requests, aws=args.aws)
 
 def main(cert_path=script_loc, set_env={}, prepend_env={}, pip=False,
-         aws=False):
-    ''' This is the main potato script. '''
+         aws=False, requests=False):
+    ''' This is the main script. '''
+
+    if not requests and not pip and not prepend_env and not set_env and not aws:
+        print("Please specify at least one of the following: --requests, --pip, --prepend-env, --set_env, --aws (windows only).")
 
     # Automated inputs:
-    loc_certs = [glob.glob(os.path.join(cert_path, x)) for x in ['*.pem', '*.crt']]
-    loc_certs = [_path_update(cert) for sublist in loc_certs for cert in sublist]
+    if requests or pip or aws:
+        loc_certs = [glob.glob(os.path.join(cert_path, x)) for x in ['*.pem', '*.crt']]
+        loc_certs = [_path_update(cert) for sublist in loc_certs for cert in sublist]
 
     # Update requests certificates - for Conda install:
-    print("Requests SSL configuration started...")
-    req_status = update_certs(requests.certs.where(), loc_certs)  # Location of Python's requests cert file
-    print(" ".join(["Requests Config:", req_status]))
-    print("Requests SSL configuration complete.")
-
+    if requests:
+        print('requests' in sys.modules)
+       
+        if ('requests' in sys.modules) and ('certifi' in sys.modules):
+            print("Requests SSL configuration started...")
+            req_status = update_certs(requests.certs.where(), loc_certs)  # Location of Python's requests cert file
+            print(" ".join(["Requests Config:", req_status]))
+            print("Requests SSL configuration complete.")
+        else:
+            print('Python requests library not installed, skipping requests update. Is conda installed?') 
+           
     # Update environment variables:
-    print("Environment variables configuration started...")
-    set_prepend_envs(set_env, prepend_env)
-    print("Environment variables configuration complete.")
+    if (prepend_env) or (set_env):
+        print("Environment variables configuration started...")
+        set_prepend_envs(set_env, prepend_env)
+        print("Environment variables configuration complete.")
 
     # Update pip config:
     if pip:
         print("Pip SSL configuration started...")
-        pip_status = ssl_pip(pth_cert=requests.certs.where(), pth_prepend="cert=")
+        if requests and ('requests' in sys.modules) and ('certifi' in sys.modules):
+            pip_cert_loc = requests.certs.where()
+        else:
+            pip_cert_loc = ssl.get_default_verify_paths().cafile
+            pip_status = update_certs(pip_cert_loc, loc_certs)
+            print(" ".join(["Pip Config:", pip_status]))
+   
+        pip_status = ssl_pip(pth_cert=pip_cert_loc, pth_prepend="cert=")
         print(" ".join(["Pip Config:", pip_status]))
         print("Pip SSL configuration complete.")
 
     # Update AWS config (if present). Requires admin priviledges.
     if aws:
-        aws_cert_win = "C:\\Program Files\\Amazon\\AWSCLI\\botocore\\vendored\\requests\\cacert.pem"
-        aws_cert_win = _path_update(aws_cert_win)
-        print(aws_cert_win)
-        if os.path.isfile(aws_cert_win):
-            print("AWS CLI SSL configuration started...")
-            aws_cert_status = update_certs(aws_cert_win, loc_certs)
-            print(" ".join(["AWS CLI SSL config:", aws_cert_status]))
-            print("AWS CLI SSL configuration complete.")
-
+        if platform.system() == 'Windows':
+            aws_cert_win = "C:\\Program Files\\Amazon\\AWSCLI\\botocore\\vendored\\requests\\cacert.pem"
+            aws_cert_win = _path_update(aws_cert_win)
+            print(aws_cert_win)
+            if os.path.isfile(aws_cert_win):
+                print("AWS CLI SSL configuration started...")
+                aws_cert_status = update_certs(aws_cert_win, loc_certs)
+                print(" ".join(["AWS CLI SSL config:", aws_cert_status]))
+                print("AWS CLI SSL configuration complete.")
+        else:
+            print("The --aws flag only applies to windows. Skipping...")
 
 if __name__ == "__main__":
     run_argparse()
