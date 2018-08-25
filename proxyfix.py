@@ -299,32 +299,34 @@ def run_argparse():  # User inputs
     args = parser.parse_args()
 
     main(cert_path=args.cert_path, set_env=set_env, prepend_env=prepend_env,
-         pip=args.pip, requests=args.requests, aws=args.aws)
+         do_pip=args.pip, do_requests=args.requests, do_aws=args.aws)
 
-def main(cert_path=script_loc, set_env={}, prepend_env={}, pip=False,
-         aws=False, requests=False):
+def main(cert_path=script_loc, set_env={}, prepend_env={}, do_pip=False,
+         do_aws=False, do_requests=False):
     ''' This is the main script. '''
 
-    if not requests and not pip and not prepend_env and not set_env and not aws:
+    if not do_requests and not do_pip and not prepend_env and not set_env and not do_aws:
         print("Please specify at least one of the following: --requests, --pip, --prepend-env, --set_env, --aws (windows only).")
 
     # Automated inputs:
-    if requests or pip or aws:
+    if do_requests or do_pip or do_aws:
         loc_certs = [glob.glob(os.path.join(cert_path, x)) for x in ['*.pem', '*.crt']]
         loc_certs = [_path_update(cert) for sublist in loc_certs for cert in sublist]
 
     # Update requests certificates - for Conda install:
-    if requests:
-        print('requests' in sys.modules)
-       
-        if ('requests' in sys.modules) and ('certifi' in sys.modules):
+    if do_requests:
+        if ('requests' in sys.modules) and ('certifi' in sys.modules) and len(loc_certs)>0:
             print("Requests SSL configuration started...")
             req_status = update_certs(requests.certs.where(), loc_certs)  # Location of Python's requests cert file
             print(" ".join(["Requests Config:", req_status]))
             print("Requests SSL configuration complete.")
-        else:
-            print('Python requests library not installed, skipping requests update. Is conda installed?') 
-           
+        elif 'requests' not in sys.modules:
+            print("Python requests library not installed, skipping requests update. Is conda installed?") 
+        elif 'certifi' not in sys.modules:
+            print("Python certifi library not installed, skipping certifi update. Is conda installed?")
+        elif len(loc_certs) < 1:
+            print("No certificate *.pem or *.crt' files found at {}, skipping certificate update.".format(os.path.abspath(loc_certs)))
+        
     # Update environment variables:
     if (prepend_env) or (set_env):
         print("Environment variables configuration started...")
@@ -332,9 +334,9 @@ def main(cert_path=script_loc, set_env={}, prepend_env={}, pip=False,
         print("Environment variables configuration complete.")
 
     # Update pip config:
-    if pip:
+    if do_pip:
         print("Pip SSL configuration started...")
-        if requests and ('requests' in sys.modules) and ('certifi' in sys.modules):
+        if do_requests and ('requests' in sys.modules) and ('certifi' in sys.modules):
             pip_cert_loc = requests.certs.where()
         else:
             pip_cert_loc = ssl.get_default_verify_paths().cafile
@@ -346,7 +348,7 @@ def main(cert_path=script_loc, set_env={}, prepend_env={}, pip=False,
         print("Pip SSL configuration complete.")
 
     # Update AWS config (if present). Requires admin priviledges.
-    if aws:
+    if do_aws:
         if platform.system() == 'Windows':
             aws_cert_win = "C:\\Program Files\\Amazon\\AWSCLI\\botocore\\vendored\\requests\\cacert.pem"
             aws_cert_win = _path_update(aws_cert_win)
