@@ -179,7 +179,7 @@ def cert_config(pth_config, config_str, pth_prepend="cert="):
         with io.open(pth_config, 'w', encoding='utf-8') as file:
             for line in config_str:
                 # Use re to print filename consistently.
-                file.write(re.sub(u'{}.*$'.format(pth_prepend), ''.join([pth_prepend, path_cert]), line))
+                file.write(unicode(re.sub('{}.*$'.format(pth_prepend), ''.join([pth_prepend, path_cert]), line)))
         status = "".join(["Created and updated ", pth_config])
     else:  # If config file exists, replace or append if pth_prepend not present
         with io.open(pth_config, encoding='utf-8') as f:
@@ -188,9 +188,9 @@ def cert_config(pth_config, config_str, pth_prepend="cert="):
         if pth_prepend not in '\t'.join(pip_contents):  # Append pip.ini cert
             with io.open(pth_config, 'a', encoding='utf-8') as file:
                 # Use re to print filename consistently.
-                file.write(re.sub(u'{}.*$'.format(pth_prepend),
-                                  u''.join([pth_prepend, path_cert]),
-                                  u'{}{}\r\n'.format(pth_prepend, path_cert)))
+                file.write(unicode(re.sub('{}.*$'.format(pth_prepend),
+                                  ''.join([pth_prepend, path_cert]),
+                                  '{}{}\r\n'.format(pth_prepend, path_cert))))
             status = "".join(["Appended to ", pth_config])
         else:  # Update path_cert:
             if path_cert not in '\t'.join(pip_contents):
@@ -241,13 +241,12 @@ def ssl_pip(pth_cert=requests.certs.where(), pth_prepend="cert="):
 #        else:  # Check if append to cert
 #            update_cert(pth_cert, loc_cert_req)
 #        pth_cert = _path_update(pth_cert)  # Determine final loc_cert_pip:
-
     pip_text = ['\r\n[global]\r\n',
-                ''.join([pth_prepend, pth_cert, '\r\n'])]  # Text to write if not present:
-
+                ''.join([pth_prepend, pth_cert, '\r\n'])]  # Text to write if not present
     # Update/create config file, return output
-    return cert_config(loc_pip_ini, pip_text, pth_prepend="cert=")
-
+    status = cert_config(loc_pip_ini, pip_text, pth_prepend="cert=")
+ 
+    return status
 
 def run_argparse():  # User inputs
     ''' Run argparse on all the incoming script arguments.'''
