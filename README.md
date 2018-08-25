@@ -16,7 +16,7 @@ $ proxyfix.py --cert_path . --set_env VAR1=var1,VAR2=var2 --prepend_env PYTHONPA
 ### As python module:
 ```
 import ./proxyfix
-proxyfix.main(cert_path=path, set_env=set_envtings, prepend_env=prepend_envs, pip=True, aws=True )
+proxyfix.main(cert_path=path, set_env=set_envtings, prepend_env=prepend_envs, do_requests=True do_pip=True, do_aws=True )
 ```
 
 **Where:**
