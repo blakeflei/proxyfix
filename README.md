@@ -10,7 +10,7 @@ proxyfix will:
 
 ### Command line:
 ```
-$ proxyfix.py --cert_path . --set_env VAR1=var1,VAR2=var2 --prepend_env PYTHONPATH=. --pip
+$ proxyfix.py --cert_path . --set_env VAR1=var1,VAR2=var2 --prepend_env PYTHONPATH=. --requests --pip --aws
 ```
 
 ### As python module:
