@@ -23,6 +23,7 @@
 import os
 import sys
 import io
+import six
 import platform
 from datetime import datetime
 from shutil import copy2
@@ -179,7 +180,7 @@ def cert_config(pth_config, config_str, pth_prepend="cert="):
         with io.open(pth_config, 'w', encoding='utf-8') as file:
             for line in config_str:
                 # Use re to print filename consistently.
-                file.write(unicode(re.sub('{}.*$'.format(pth_prepend), ''.join([pth_prepend, path_cert]), line)))
+                file.write(six.text_type(re.sub('{}.*$'.format(pth_prepend), ''.join([pth_prepend, path_cert]), line)))
         status = "".join(["Created and updated ", pth_config])
     else:  # If config file exists, replace or append if pth_prepend not present
         with io.open(pth_config, encoding='utf-8') as f:
@@ -188,7 +189,7 @@ def cert_config(pth_config, config_str, pth_prepend="cert="):
         if pth_prepend not in '\t'.join(pip_contents):  # Append pip.ini cert
             with io.open(pth_config, 'a', encoding='utf-8') as file:
                 # Use re to print filename consistently.
-                file.write(unicode(re.sub('{}.*$'.format(pth_prepend),
+                file.write(six.text_type(re.sub('{}.*$'.format(pth_prepend),
                                   ''.join([pth_prepend, path_cert]),
                                   '{}{}\r\n'.format(pth_prepend, path_cert))))
             status = "".join(["Appended to ", pth_config])
