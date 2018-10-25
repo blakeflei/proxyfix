@@ -162,8 +162,7 @@ def update_certs(pth_orig_cert, pth_new_cert_list):
         if status is "":
             status = "Certs are already added to: {}".format(pth_orig_cert)
     else:
-        status = "".join(["No cert files in path: ",
-                          os.path.abspath(pth_new_cert_list), "."])
+        status = "No cert files ending in *.crt or *.pem in specified path."
     return status
 
 
