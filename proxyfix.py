@@ -22,7 +22,7 @@
 
 import os
 import sys
-import io
+from io import open
 import six
 import platform
 from datetime import datetime
@@ -120,9 +120,9 @@ def _backup_file(pth_old):
 
 def _append_text(pth_prev_textfile, path_new_textfile, backup=True):
     """ Check if text present in file, if not append. """
-    with io.open(pth_prev_textfile, encoding='utf-8') as f:
+    with open(pth_prev_textfile, encoding='utf-8') as f:
         existing_contents = f.readlines()
-    with io.open(path_new_textfile, encoding='utf-8') as f:
+    with open(path_new_textfile, encoding='utf-8') as f:
         new_contents = f.readlines()
         new_contents.insert(0, "\n")
     if not set(new_contents).issubset(existing_contents):  # If new text is not in existing, append
@@ -176,17 +176,17 @@ def cert_config(pth_config, config_str, pth_prepend="cert="):
     if not os.path.exists(pth_config):  # if config file does not exist, create and populate
         if not os.path.exists(os.path.dirname(pth_config)):
             os.makedirs(os.path.dirname(pth_config))
-        with io.open(pth_config, 'w', encoding='utf-8') as file:
+        with open(pth_config, 'w', encoding='utf-8') as file:
             for line in config_str:
                 # Use re to print filename consistently.
                 file.write(six.text_type(re.sub('{}.*$'.format(pth_prepend), ''.join([pth_prepend, path_cert]), line)))
         status = "".join(["Created and updated ", pth_config])
     else:  # If config file exists, replace or append if pth_prepend not present
-        with io.open(pth_config, encoding='utf-8') as f:
+        with open(pth_config, encoding='utf-8') as f:
             pip_contents = f.readlines()  # Read contents
             pip_contents = [_path_update(x) for x in pip_contents]  # Update windows paths for string literals
         if pth_prepend not in '\t'.join(pip_contents):  # Append pip.ini cert
-            with io.open(pth_config, 'a', encoding='utf-8') as file:
+            with open(pth_config, 'a', encoding='utf-8') as file:
                 # Use re to print filename consistently.
                 file.write(six.text_type(re.sub('{}.*$'.format(pth_prepend),
                                   ''.join([pth_prepend, path_cert]),
