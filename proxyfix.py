@@ -131,7 +131,7 @@ def _append_text(pth_prev_textfile, path_new_textfile, backup=True):
             status = 'Backed up: {}\nat {}.\n'.format(pth_prev_textfile,
                                                       backup_filename)
         with open(pth_prev_textfile, 'a+') as f:  # Append new to existing
-            existing_contents = f.writelines([unicode(x) for x in new_contents])
+            existing_contents = f.writelines([six.text_type(x) for x in new_contents])
         return True
     else:
         return False
