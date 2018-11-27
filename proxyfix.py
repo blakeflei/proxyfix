@@ -229,7 +229,10 @@ def ssl_pip(pth_cert=requests.certs.where(), pth_prepend="cert="):
             else:
                 loc_pip_ini = os.path.join(mac_pip_2, 'pip.conf')
         elif operating_sys == 'Linux':  # Linux
-            loc_pip_ini = os.path.join(os.environ['HOME'], '.config', 'pip',
+            home_dir = '/root'
+            if 'HOME' in os.environ:
+                home_dir = os.environ['HOME']
+            loc_pip_ini = os.path.join(home_dir, '.config', 'pip',
                                        'pip.conf')
 #    # Copy Pip Cert - skipped b/c we can point to requests cert
 #    if pth_cert=='default':
